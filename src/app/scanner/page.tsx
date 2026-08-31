@@ -88,11 +88,15 @@ export default function ScannerPortalPage() {
               (decodedText: string) => {
                 // Successfully scanned QR code
                 handleVerifyCode(decodedText);
-                // Pause scanning temporarily
-                html5QrCode.pause(true);
+                // Pause scanning temporarily if running
+                try {
+                  if (html5QrCode.isScanning) {
+                    html5QrCode.pause(true);
+                  }
+                } catch (e) {}
               },
-              (errorMessage: string) => {
-                // Ignore silent scan errors
+              () => {
+                // Ignore frame-by-frame silent scan errors
               }
             )
             .catch((err: any) => {
@@ -107,7 +111,11 @@ export default function ScannerPortalPage() {
 
     return () => {
       if (html5QrCodeRef.current) {
-        html5QrCodeRef.current.stop().catch(() => {});
+        try {
+          if (html5QrCodeRef.current.isScanning) {
+            html5QrCodeRef.current.stop().catch(() => {});
+          }
+        } catch (e) {}
       }
     };
   }, [activeTab, cameraActive]);
