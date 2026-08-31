@@ -30,29 +30,38 @@ export default function RootLayout({
               </div>
             </Link>
 
-            <nav className="flex items-center gap-1 sm:gap-2">
+            <nav className="flex flex-wrap items-center gap-2">
               <Link
                 href="/"
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all"
+                className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all border border-transparent hover:border-slate-700"
               >
-                <Calendar className="w-4 h-4 text-indigo-400" />
-                <span className="hidden sm:inline">Events</span>
+                <Calendar className="w-5 h-5 text-indigo-400 shrink-0" />
+                <div className="flex flex-col text-left">
+                  <span className="text-sm font-bold leading-tight text-white">Events</span>
+                  <span className="text-[10px] text-slate-400 font-normal leading-tight">For guest to go thru the journey purchase ticket</span>
+                </div>
               </Link>
 
               <Link
                 href="/scanner"
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all shadow-sm"
+                className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all shadow-sm"
               >
-                <QrCode className="w-4 h-4 text-emerald-400 animate-pulse" />
-                <span>Staff Scanner</span>
+                <QrCode className="w-5 h-5 text-emerald-400 animate-pulse shrink-0" />
+                <div className="flex flex-col text-left">
+                  <span className="text-sm font-bold leading-tight text-emerald-300">Staff Scanner</span>
+                  <span className="text-[10px] text-emerald-400/80 font-normal leading-tight">For staff to do scanning job</span>
+                </div>
               </Link>
 
               <Link
                 href="/admin"
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-500 transition-all shadow-md shadow-indigo-600/20"
+                className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-all shadow-md shadow-indigo-600/20 border border-indigo-500/40"
               >
-                <LayoutDashboard className="w-4 h-4" />
-                <span className="hidden md:inline">Admin Hub</span>
+                <LayoutDashboard className="w-5 h-5 shrink-0" />
+                <div className="flex flex-col text-left">
+                  <span className="text-sm font-bold leading-tight">Admin Hub</span>
+                  <span className="text-[10px] text-indigo-200 font-normal leading-tight">For admin to test create / edit events</span>
+                </div>
               </Link>
             </nav>
           </div>
