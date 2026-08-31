@@ -1,14 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect, use } from 'react';
+import { useRouter } from 'next/navigation';
 import QRCode from 'qrcode';
 import {
-  Ticket,
-  User,
-  CreditCard,
-  Phone,
-  Shirt,
   Calendar,
   Clock,
   MapPin,
@@ -17,12 +12,12 @@ import {
   AlertTriangle,
   ArrowLeft,
   Printer,
+  Users,
 } from 'lucide-react';
 
-export default function DigitalTicketPage() {
-  const params = useParams();
+export default function DigitalTicketPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const router = useRouter();
-  const id = params.id as string;
 
   const [ticket, setTicket] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -69,7 +64,7 @@ export default function DigitalTicketPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+      <div className="flex flex-col items-center justify-center py-20 space-y-4 max-w-md mx-auto">
         <div className="w-10 h-10 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin" />
         <p className="text-sm text-slate-400">Loading digital pass details...</p>
       </div>
@@ -94,6 +89,15 @@ export default function DigitalTicketPage() {
     );
   }
 
+  const eventDateFormatted = ticket.eventDate
+    ? new Date(ticket.eventDate).toLocaleDateString('en-US', {
+        weekday: 'short',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : 'Oct 24, 2026';
+
   return (
     <div className="max-w-xl mx-auto py-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -101,15 +105,26 @@ export default function DigitalTicketPage() {
           onClick={() => router.push('/')}
           className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Booking
+          <ArrowLeft className="w-4 h-4" /> Back to Events
         </button>
 
-        <button
-          onClick={() => window.print()}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-all border border-slate-700"
-        >
-          <Printer className="w-3.5 h-3.5" /> Print Pass
-        </button>
+        <div className="flex items-center gap-2">
+          {ticket.bookingRef && (
+            <button
+              onClick={() => router.push(`/booking/${ticket.bookingRef}`)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-semibold border border-indigo-500/30"
+            >
+              <Users className="w-3.5 h-3.5" /> Group Order ({ticket.groupTicketsCount})
+            </button>
+          )}
+
+          <button
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition-all border border-slate-700"
+          >
+            <Printer className="w-3.5 h-3.5" /> Print
+          </button>
+        </div>
       </div>
 
       {/* Main Digital Pass Card */}
@@ -118,10 +133,10 @@ export default function DigitalTicketPage() {
         <div className="p-6 bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 border-b border-slate-800 flex justify-between items-center">
           <div>
             <span className="text-xs font-semibold uppercase tracking-widest text-indigo-300 block">OFFICIAL ENTRY PASS</span>
-            <h1 className="text-2xl font-black text-white tracking-tight">NEON FEST 2026</h1>
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">{ticket.eventName}</h1>
           </div>
           <div className="text-right">
-            <span className="font-mono text-xs font-bold text-slate-400 block">TICKET ID</span>
+            <span className="font-mono text-xs font-bold text-slate-400 block">TICKET #</span>
             <span className="font-mono text-sm font-extrabold text-indigo-300 bg-slate-950/60 px-2.5 py-1 rounded-lg border border-slate-800">
               {ticket.ticketNumber}
             </span>
@@ -142,7 +157,7 @@ export default function DigitalTicketPage() {
 
             {ticket.isRedeemed ? (
               <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-red-500/20 text-red-400 border border-red-500/30">
-                REDEEMED ({new Date(ticket.redemption.redeemedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                REDEEMED
               </span>
             ) : (
               <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
@@ -161,7 +176,7 @@ export default function DigitalTicketPage() {
               )}
             </div>
             <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> Scanned by Event Gatekeepers on entry
+              <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" /> Scanned by Event Staff on entry
             </p>
           </div>
 
@@ -198,10 +213,10 @@ export default function DigitalTicketPage() {
           {/* Event Info */}
           <div className="border-t border-slate-800 pt-4 space-y-2 text-xs text-slate-400">
             <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-indigo-400" /> Saturday, Oct 24, 2026</span>
-              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-purple-400" /> 4:00 PM onwards</span>
+              <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-indigo-400" /> {eventDateFormatted}</span>
+              <span className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-purple-400" /> Gates Open 4:00 PM</span>
             </div>
-            <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-pink-400" /> Bukit Jalil Stadium Grounds Gate 3</div>
+            <div className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-pink-400" /> {ticket.eventLocation || 'Main Venue'}</div>
           </div>
         </div>
       </div>

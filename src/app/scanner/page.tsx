@@ -9,13 +9,13 @@ import {
   CheckCircle2,
   AlertTriangle,
   Shirt,
-  ShieldCheck,
   RotateCcw,
   Zap,
   UserCheck,
   UserX,
   Volume2,
   VolumeX,
+  Users,
 } from 'lucide-react';
 
 export default function ScannerPortalPage() {
@@ -31,14 +31,13 @@ export default function ScannerPortalPage() {
   const [verifying, setVerifying] = useState(false);
   const [scannedTicket, setScannedTicket] = useState<any>(null);
   const [verifyError, setVerifyError] = useState('');
-  const [isAuthentic, setIsAuthentic] = useState(true);
 
   // Redemption Action State
   const [redeeming, setRedeeming] = useState(false);
   const [redemptionSuccess, setRedemptionSuccess] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  // Sound generator helper using Web Audio API
+  // Audio helper
   const playSound = (type: 'success' | 'warning' | 'error') => {
     if (!soundEnabled) return;
     try {
@@ -49,14 +48,14 @@ export default function ScannerPortalPage() {
       gain.connect(ctx.destination);
 
       if (type === 'success') {
-        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1); // A5
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.setValueAtTime(880, ctx.currentTime + 0.1);
         gain.gain.setValueAtTime(0.15, ctx.currentTime);
         osc.start();
         osc.stop(ctx.currentTime + 0.25);
       } else if (type === 'warning') {
-        osc.frequency.setValueAtTime(440, ctx.currentTime); // A4
-        osc.frequency.setValueAtTime(349.23, ctx.currentTime + 0.15); // F4
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.setValueAtTime(349.23, ctx.currentTime + 0.15);
         gain.gain.setValueAtTime(0.2, ctx.currentTime);
         osc.start();
         osc.stop(ctx.currentTime + 0.35);
@@ -71,7 +70,6 @@ export default function ScannerPortalPage() {
     }
   };
 
-  // Handle camera QR scanning using html5-qrcode
   useEffect(() => {
     let html5QrCode: any = null;
 
@@ -86,24 +84,20 @@ export default function ScannerPortalPage() {
               { facingMode: 'environment' },
               { fps: 10, qrbox: { width: 250, height: 250 } },
               (decodedText: string) => {
-                // Successfully scanned QR code
                 handleVerifyCode(decodedText);
-                // Pause scanning temporarily if running
                 try {
                   if (html5QrCode.isScanning) {
                     html5QrCode.pause(true);
                   }
                 } catch (e) {}
               },
-              () => {
-                // Ignore frame-by-frame silent scan errors
-              }
+              () => {}
             )
-            .catch((err: any) => {
-              setScannerError('Could not start camera. Please ensure camera permission is granted or try manual lookup.');
+            .catch(() => {
+              setScannerError('Could not start camera. Please ensure permissions are enabled or use manual search.');
               setCameraActive(false);
             });
-        } catch (err: any) {
+        } catch (err) {
           setScannerError('Camera initialization error.');
         }
       });
@@ -138,7 +132,6 @@ export default function ScannerPortalPage() {
       }
 
       setScannedTicket(data.ticket);
-      setIsAuthentic(data.isAuthentic);
 
       if (data.ticket.isRedeemed) {
         playSound('warning');
@@ -178,7 +171,6 @@ export default function ScannerPortalPage() {
         throw new Error(data.error || 'Redemption failed');
       }
 
-      // Launch celebration confetti
       confetti({
         particleCount: 80,
         spread: 70,
@@ -187,8 +179,6 @@ export default function ScannerPortalPage() {
 
       playSound('success');
       setRedemptionSuccess(data.message);
-
-      // Refresh ticket details
       handleVerifyCode(scannedTicket.id);
     } catch (err: any) {
       alert(err.message || 'Could not mark ticket as redeemed');
@@ -210,14 +200,14 @@ export default function ScannerPortalPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 py-2">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <QrCode className="w-6 h-6 text-emerald-400" /> Staff Scanner Portal
+            <QrCode className="w-6 h-6 text-emerald-400" /> Staff Wristband Scanner
           </h1>
-          <p className="text-xs text-slate-400">Scan QR passes or search IC for wristband distribution</p>
+          <p className="text-xs text-slate-400">Scan QR codes or search IC/order refs to dispense wristbands & gear</p>
         </div>
 
         <button
@@ -229,7 +219,7 @@ export default function ScannerPortalPage() {
         </button>
       </div>
 
-      {/* Mode Selector Tabs */}
+      {/* Mode Switcher Tabs */}
       <div className="flex rounded-2xl bg-slate-900/90 p-1.5 border border-slate-800">
         <button
           onClick={() => {
@@ -260,7 +250,7 @@ export default function ScannerPortalPage() {
         </button>
       </div>
 
-      {/* Input / Camera Section */}
+      {/* Camera / Search Body */}
       {activeTab === 'camera' ? (
         <div className="glass-card rounded-3xl p-4 sm:p-6 border border-slate-800 text-center space-y-4">
           {!cameraActive ? (
@@ -268,7 +258,7 @@ export default function ScannerPortalPage() {
               <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mx-auto border border-indigo-500/20">
                 <Camera className="w-8 h-8" />
               </div>
-              <p className="text-sm text-slate-300">Tap below to activate device camera for live QR code scanning.</p>
+              <p className="text-sm text-slate-300">Tap below to activate device camera for live scanning.</p>
               <button
                 onClick={() => {
                   setScannerError('');
@@ -287,10 +277,7 @@ export default function ScannerPortalPage() {
                   {scannerError}
                 </div>
               )}
-              <button
-                onClick={() => setCameraActive(false)}
-                className="text-xs text-slate-400 hover:underline"
-              >
+              <button onClick={() => setCameraActive(false)} className="text-xs text-slate-400 hover:underline">
                 Stop Camera
               </button>
             </div>
@@ -299,14 +286,14 @@ export default function ScannerPortalPage() {
       ) : (
         <form onSubmit={handleManualSubmit} className="glass-card rounded-3xl p-6 border border-slate-800 space-y-4">
           <label className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-            Search by IC / Passport, Ticket Code, or Ticket UUID
+            Search IC / Passport, Ticket Code, or Order Ref
           </label>
 
           <div className="flex gap-2">
             <input
               type="text"
               required
-              placeholder="e.g. 950812-14-5521 or TCK-VIP01"
+              placeholder="e.g. 950812-14-5521 or BK-NEON778"
               value={searchCode}
               onChange={(e) => setSearchCode(e.target.value)}
               className="flex-1 px-4 py-3 rounded-xl bg-slate-900/90 border border-slate-700/80 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm font-mono uppercase"
@@ -333,9 +320,9 @@ export default function ScannerPortalPage() {
           <p className="text-sm text-red-300">{verifyError}</p>
           <button
             onClick={resumeScanner}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium transition-all"
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium"
           >
-            Scan Next Ticket
+            Scan Next Guest
           </button>
         </div>
       )}
@@ -346,6 +333,18 @@ export default function ScannerPortalPage() {
           {redemptionSuccess && (
             <div className="p-4 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-sm font-semibold flex items-center gap-2 animate-bounce">
               <CheckCircle2 className="w-5 h-5 text-emerald-400" /> {redemptionSuccess}
+            </div>
+          )}
+
+          {/* Group Booking Badge Context */}
+          {scannedTicket.bookingRef && (
+            <div className="bg-indigo-500/10 border border-indigo-500/20 px-4 py-2.5 rounded-xl flex items-center justify-between text-xs">
+              <span className="text-indigo-300 font-semibold flex items-center gap-1.5">
+                <Users className="w-4 h-4" /> Part of Order: <span className="font-mono text-white">{scannedTicket.bookingRef}</span>
+              </span>
+              <span className="text-slate-300 font-medium">
+                {scannedTicket.groupRedeemedCount} / {scannedTicket.groupTicketsCount} Redeemed in Group
+              </span>
             </div>
           )}
 
@@ -362,7 +361,7 @@ export default function ScannerPortalPage() {
             </div>
 
             <div className="text-right">
-              <span className="text-xs text-slate-400 font-medium block">TICKET NUMBER</span>
+              <span className="text-xs text-slate-400 font-medium block font-mono">{scannedTicket.eventName}</span>
               <span className="font-mono text-base font-extrabold text-indigo-300">{scannedTicket.ticketNumber}</span>
             </div>
           </div>
@@ -386,7 +385,7 @@ export default function ScannerPortalPage() {
               </div>
             </div>
 
-            {/* CLEAR T-SHIRT DISTRIBUTOR HIGHLIGHT BADGE */}
+            {/* CLEAR T-SHIRT HIGHLIGHT BADGE */}
             <div className="bg-gradient-to-br from-purple-950/80 to-slate-950 p-5 rounded-2xl border-2 border-purple-500/40 flex flex-col justify-center items-center text-center shadow-inner">
               <span className="text-xs font-extrabold uppercase text-purple-300 tracking-wider flex items-center gap-1.5 mb-1">
                 <Shirt className="w-4 h-4 text-purple-400" /> T-SHIRT TO DISPENSE

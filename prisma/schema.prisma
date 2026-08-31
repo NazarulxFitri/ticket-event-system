@@ -7,13 +7,48 @@ datasource db {
   url      = "file:./dev.db"
 }
 
+model Event {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String
+  date        DateTime
+  location    String
+  bannerUrl   String?
+  status      String   @default("ACTIVE") // ACTIVE, UPCOMING, COMPLETED, DRAFT
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  zones       Zone[]
+  tickets     Ticket[]
+  bookings    Booking[]
+}
+
 model Zone {
   id          String   @id @default(uuid())
-  name        String   @unique
+  name        String
   description String
   price       Float    @default(0.0)
   capacity    Int
   colorCode   String
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tickets     Ticket[]
+
+  @@unique([eventId, name])
+}
+
+model Booking {
+  id          String   @id @default(uuid())
+  bookingRef  String   @unique
+  buyerName   String
+  buyerEmail  String
+  buyerPhone  String
+  totalAmount Float    @default(0.0)
+  status      String   @default("CONFIRMED")
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   tickets     Ticket[]
@@ -28,6 +63,10 @@ model Ticket {
   tshirtSize   String
   zoneId       String
   zone         Zone        @relation(fields: [zoneId], references: [id])
+  eventId      String
+  event        Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  bookingId    String?
+  booking      Booking?    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   isVvip       Boolean     @default(false)
   status       String      @default("CONFIRMED")
   qrHash       String

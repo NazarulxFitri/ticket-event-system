@@ -1,10 +1,23 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const eventId = searchParams.get('eventId');
+
+    const whereCondition = eventId ? { eventId } : {};
+
     const zones = await prisma.zone.findMany({
+      where: whereCondition,
       include: {
+        event: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
         _count: {
           select: {
             tickets: {
@@ -28,6 +41,8 @@ export async function GET() {
         bookedCount: booked,
         remainingCapacity: remaining,
         colorCode: z.colorCode,
+        eventId: z.eventId,
+        eventTitle: z.event?.title,
         isSoldOut: remaining === 0,
       };
     });

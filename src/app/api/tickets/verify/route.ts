@@ -17,7 +17,6 @@ export async function GET(request: Request) {
     let searchId = code.trim();
     let parsedPayload: any = null;
 
-    // Check if code is a JSON string from QR scanner
     if (code.startsWith('{') && code.endsWith('}')) {
       try {
         parsedPayload = JSON.parse(code);
@@ -25,11 +24,10 @@ export async function GET(request: Request) {
           searchId = parsedPayload.ticketId;
         }
       } catch (e) {
-        // Ignore parse error, proceed with raw string search
+        // Ignore JSON parse error, search raw string
       }
     }
 
-    // Lookup by ID, ticketNumber, or IC
     const ticket = await prisma.ticket.findFirst({
       where: {
         OR: [
@@ -40,6 +38,16 @@ export async function GET(request: Request) {
       },
       include: {
         zone: true,
+        event: true,
+        booking: {
+          include: {
+            tickets: {
+              include: {
+                redemption: true,
+              },
+            },
+          },
+        },
         redemption: true,
       },
     });
@@ -47,7 +55,7 @@ export async function GET(request: Request) {
     if (!ticket) {
       return NextResponse.json(
         { success: false, error: 'No ticket found matching the provided QR or search code.' },
-        { status: 444 }
+        { status: 404 }
       );
     }
 
@@ -62,6 +70,17 @@ export async function GET(request: Request) {
 
     const isRedeemed = !!ticket.redemption;
 
+    // Group info
+    let groupTicketsCount = 1;
+    let groupRedeemedCount = isRedeemed ? 1 : 0;
+    let bookingRef = null;
+
+    if (ticket.booking) {
+      bookingRef = ticket.booking.bookingRef;
+      groupTicketsCount = ticket.booking.tickets.length;
+      groupRedeemedCount = ticket.booking.tickets.filter((t) => !!t.redemption).length;
+    }
+
     return NextResponse.json({
       success: true,
       isAuthentic,
@@ -74,9 +93,15 @@ export async function GET(request: Request) {
         tshirtSize: ticket.tshirtSize,
         zoneName: ticket.zone.name,
         zoneColor: ticket.zone.colorCode,
+        eventName: ticket.event?.title || 'Main Event',
+        eventDate: ticket.event?.date,
+        eventLocation: ticket.event?.location,
         isVvip: ticket.isVvip,
         status: ticket.status,
         createdAt: ticket.createdAt,
+        bookingRef,
+        groupTicketsCount,
+        groupRedeemedCount,
         redemption: ticket.redemption
           ? {
               id: ticket.redemption.id,

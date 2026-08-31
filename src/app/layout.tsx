@@ -1,11 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Ticket, QrCode, LayoutDashboard, Sparkles } from 'lucide-react';
+import { Ticket, QrCode, LayoutDashboard, Sparkles, Calendar } from 'lucide-react';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Event Wristband & Ticketing Portal',
-  description: 'Public booking, QR digital pass, staff wristband redemption scanner, and admin dashboard.',
+  title: 'Multi-Event Wristband & Ticketing Portal',
+  description: 'Multi-event booking, multi-ticket per-attendee QR digital passes, staff wristband redemption scanner, and admin dashboard.',
 };
 
 export default function RootLayout({
@@ -24,7 +24,7 @@ export default function RootLayout({
               </div>
               <div>
                 <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent flex items-center gap-1.5">
-                  EVENTIX <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-medium">LIVE 2026</span>
+                  EVENTIX <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 font-medium">MULTI-EVENT</span>
                 </span>
                 <p className="text-xs text-slate-400 font-medium">Wristband & Pass Portal</p>
               </div>
@@ -35,8 +35,8 @@ export default function RootLayout({
                 href="/"
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all"
               >
-                <Ticket className="w-4 h-4 text-indigo-400" />
-                <span className="hidden sm:inline">Public Booking</span>
+                <Calendar className="w-4 h-4 text-indigo-400" />
+                <span className="hidden sm:inline">Events</span>
               </Link>
 
               <Link
@@ -52,7 +52,7 @@ export default function RootLayout({
                 className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-500 transition-all shadow-md shadow-indigo-600/20"
               >
                 <LayoutDashboard className="w-4 h-4" />
-                <span className="hidden md:inline">Admin Dashboard</span>
+                <span className="hidden md:inline">Admin Hub</span>
               </Link>
             </nav>
           </div>
@@ -63,9 +63,9 @@ export default function RootLayout({
         <footer className="glass-card border-t border-slate-800/80 py-6 px-4 mt-12 text-center text-xs text-slate-500">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> Event Ticketing & Wristband Redemption Engine
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> Multi-Event Ticketing & Wristband Engine
             </p>
-            <p>Powered by Next.js 14, Prisma, SQLite & HTML5 QR Scanner</p>
+            <p>Powered by Next.js, Prisma, SQLite & HTML5 QR Scanner</p>
           </div>
         </footer>
       </body>
