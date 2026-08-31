@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { redeemTicket } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -13,46 +13,24 @@ export async function POST(request: Request) {
       );
     }
 
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: ticketId },
-      include: { redemption: true, zone: true },
-    });
+    const result = await redeemTicket(ticketId, staffName, notes);
 
-    if (!ticket) {
-      return NextResponse.json(
-        { success: false, error: 'Ticket not found.' },
-        { status: 404 }
-      );
-    }
-
-    if (ticket.redemption) {
+    if (result.error) {
       return NextResponse.json(
         {
           success: false,
-          error: `Wristband ALREADY REDEEMED on ${new Date(ticket.redemption.redeemedAt).toLocaleString()} by ${ticket.redemption.redeemedBy}. Double redemption blocked!`,
-          redemption: ticket.redemption,
+          error: result.error,
+          redemption: result.redemption || null,
         },
-        { status: 409 } // Conflict
+        { status: result.status || 500 }
       );
     }
 
-    const newRedemption = await prisma.redemption.create({
-      data: {
-        ticketId: ticket.id,
-        redeemedBy: (staffName || 'Staff Gate 1').trim(),
-        notes: (notes || `Wristband & Size ${ticket.tshirtSize} T-Shirt distributed`).trim(),
-      },
-    });
-
     return NextResponse.json({
       success: true,
-      message: `Wristband and Size ${ticket.tshirtSize} T-Shirt successfully marked as REDEEMED for ${ticket.fullName}!`,
-      redemption: newRedemption,
-      guest: {
-        fullName: ticket.fullName,
-        tshirtSize: ticket.tshirtSize,
-        zoneName: ticket.zone.name,
-      },
+      message: result.message,
+      redemption: result.redemption,
+      guest: result.guest,
     });
   } catch (error: any) {
     return NextResponse.json(

@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getExportData } from '@/lib/db';
 
 export async function GET() {
   try {
-    const tickets = await prisma.ticket.findMany({
-      include: { zone: true, redemption: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    const tickets = await getExportData();
 
     const headers = [
       'Ticket Number',
@@ -31,7 +28,7 @@ export async function GET() {
       `"${t.phone}"`,
       `"${t.icPassport}"`,
       `"${t.tshirtSize}"`,
-      `"${t.zone.name}"`,
+      `"${t.zoneName}"`,
       t.isVvip ? 'YES' : 'NO',
       t.redemption ? 'REDEEMED' : 'UNREDEEMED',
       t.redemption ? `"${new Date(t.redemption.redeemedAt).toISOString()}"` : 'N/A',

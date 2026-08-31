@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getTicketByCodeOrId } from '@/lib/db';
 import { verifyQrHash } from '@/lib/crypto';
 
 export async function GET(request: Request) {
@@ -24,40 +24,20 @@ export async function GET(request: Request) {
           searchId = parsedPayload.ticketId;
         }
       } catch (e) {
-        // Ignore JSON parse error, search raw string
+        // Ignore JSON parse error
       }
     }
 
-    const ticket = await prisma.ticket.findFirst({
-      where: {
-        OR: [
-          { id: searchId },
-          { ticketNumber: searchId.toUpperCase() },
-          { icPassport: searchId.toUpperCase() },
-        ],
-      },
-      include: {
-        zone: true,
-        event: true,
-        booking: {
-          include: {
-            tickets: {
-              include: {
-                redemption: true,
-              },
-            },
-          },
-        },
-        redemption: true,
-      },
-    });
+    const ticketData = await getTicketByCodeOrId(searchId);
 
-    if (!ticket) {
+    if (!ticketData) {
       return NextResponse.json(
         { success: false, error: 'No ticket found matching the provided QR or search code.' },
         { status: 404 }
       );
     }
+
+    const { ticket, zone, event, redemption, bookingRef, groupTicketsCount, groupRedeemedCount } = ticketData;
 
     let isAuthentic = true;
     if (parsedPayload && parsedPayload.hash) {
@@ -68,18 +48,7 @@ export async function GET(request: Request) {
       }
     }
 
-    const isRedeemed = !!ticket.redemption;
-
-    // Group info
-    let groupTicketsCount = 1;
-    let groupRedeemedCount = isRedeemed ? 1 : 0;
-    let bookingRef = null;
-
-    if (ticket.booking) {
-      bookingRef = ticket.booking.bookingRef;
-      groupTicketsCount = ticket.booking.tickets.length;
-      groupRedeemedCount = ticket.booking.tickets.filter((t) => !!t.redemption).length;
-    }
+    const isRedeemed = !!redemption;
 
     return NextResponse.json({
       success: true,
@@ -91,23 +60,23 @@ export async function GET(request: Request) {
         phone: ticket.phone,
         icPassport: ticket.icPassport,
         tshirtSize: ticket.tshirtSize,
-        zoneName: ticket.zone.name,
-        zoneColor: ticket.zone.colorCode,
-        eventName: ticket.event?.title || 'Main Event',
-        eventDate: ticket.event?.date,
-        eventLocation: ticket.event?.location,
+        zoneName: zone.name,
+        zoneColor: zone.colorCode,
+        eventName: event?.title || 'Main Event',
+        eventDate: event?.date,
+        eventLocation: event?.location,
         isVvip: ticket.isVvip,
         status: ticket.status,
         createdAt: ticket.createdAt,
         bookingRef,
         groupTicketsCount,
         groupRedeemedCount,
-        redemption: ticket.redemption
+        redemption: redemption
           ? {
-              id: ticket.redemption.id,
-              redeemedAt: ticket.redemption.redeemedAt,
-              redeemedBy: ticket.redemption.redeemedBy,
-              notes: ticket.redemption.notes,
+              id: redemption.id,
+              redeemedAt: redemption.redeemedAt,
+              redeemedBy: redemption.redeemedBy,
+              notes: redemption.notes,
             }
           : null,
         isRedeemed,
