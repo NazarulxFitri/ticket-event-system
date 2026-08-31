@@ -16,6 +16,9 @@ import {
   FileSpreadsheet,
   Calendar,
   Filter,
+  Edit3,
+  Sliders,
+  Trash2,
 } from 'lucide-react';
 
 interface EventOption {
@@ -60,6 +63,14 @@ interface AnalyticsData {
   }>;
 }
 
+interface CustomZoneInput {
+  name: string;
+  description: string;
+  price: number;
+  capacity: number;
+  colorCode: string;
+}
+
 export default function AdminDashboardPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [eventsList, setEventsList] = useState<EventOption[]>([]);
@@ -67,6 +78,12 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'REDEEMED' | 'UNREDEEMED'>('ALL');
+
+  // Edit Zone Quota Modal State
+  const [editingZone, setEditingZone] = useState<any>(null);
+  const [editZoneQuota, setEditZoneQuota] = useState<number>(100);
+  const [editZonePrice, setEditZonePrice] = useState<number>(100);
+  const [updatingZone, setUpdatingZone] = useState(false);
 
   // VVIP Modal State
   const [isVvipModalOpen, setIsVvipModalOpen] = useState(false);
@@ -84,6 +101,13 @@ export default function AdminDashboardPage() {
   const [eventDate, setEventDate] = useState('');
   const [eventLocation, setEventLocation] = useState('');
   const [creatingEvent, setCreatingEvent] = useState(false);
+
+  // Seat Zones Quotas configuration for new event
+  const [customZones, setCustomZones] = useState<CustomZoneInput[]>([
+    { name: 'VIP Category', description: 'Front stage VIP row access', price: 250, capacity: 100, colorCode: '#8B5CF6' },
+    { name: 'Standard Seat', description: 'Numbered seating tier 2', price: 120, capacity: 300, colorCode: '#3B82F6' },
+    { name: 'Standing Arena', description: 'Main standing area', price: 80, capacity: 500, colorCode: '#10B981' },
+  ]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -106,6 +130,25 @@ export default function AdminDashboardPage() {
     }
   };
 
+  const handleZoneInputChange = (index: number, field: keyof CustomZoneInput, value: any) => {
+    setCustomZones((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const addCustomZoneRow = () => {
+    setCustomZones((prev) => [
+      ...prev,
+      { name: `Zone ${prev.length + 1}`, description: 'Seat area', price: 100, capacity: 150, colorCode: '#F59E0B' },
+    ]);
+  };
+
+  const removeCustomZoneRow = (index: number) => {
+    setCustomZones((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventTitle || !eventDate || !eventLocation) return;
@@ -120,6 +163,7 @@ export default function AdminDashboardPage() {
           description: eventDesc || 'Live event experience',
           date: eventDate,
           location: eventLocation,
+          zones: customZones,
         }),
       });
       const json = await res.json();
@@ -130,11 +174,42 @@ export default function AdminDashboardPage() {
         setEventDate('');
         setEventLocation('');
         fetchAnalytics();
+      } else {
+        alert(json.error || 'Failed to create event');
       }
-    } catch (err) {
-      console.error('Failed to create event:', err);
+    } catch (err: any) {
+      alert(err.message || 'Failed to create event');
     } finally {
       setCreatingEvent(false);
+    }
+  };
+
+  const handleSaveZoneQuota = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingZone) return;
+
+    try {
+      setUpdatingZone(true);
+      const res = await fetch(`/api/admin/zones/${editingZone.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          capacity: editZoneQuota,
+          price: editZonePrice,
+        }),
+      });
+
+      const json = await res.json();
+      if (json.success) {
+        setEditingZone(null);
+        fetchAnalytics();
+      } else {
+        alert(json.error || 'Failed to update zone quota');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Update failed');
+    } finally {
+      setUpdatingZone(false);
     }
   };
 
@@ -204,9 +279,9 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <LayoutDashboard className="w-6 h-6 text-indigo-400" /> Admin Analytics & Multi-Event Hub
+            <LayoutDashboard className="w-6 h-6 text-indigo-400" /> Admin Analytics & Seat Quota Hub
           </h1>
-          <p className="text-xs text-slate-400">Manage events, track multi-ticket orders & aggregate merchandise stock</p>
+          <p className="text-xs text-slate-400">Configure seat quotas per event, manage ticket stock & issue passes</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
@@ -231,7 +306,7 @@ export default function AdminDashboardPage() {
             onClick={() => setIsEventModalOpen(true)}
             className="px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-md"
           >
-            <Plus className="w-4 h-4" /> Add Event
+            <Plus className="w-4 h-4" /> Add Event with Quotas
           </button>
 
           <button
@@ -302,7 +377,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Breakdown Section: T-Shirt Inventory & Zone Progress */}
+      {/* Breakdown Section: T-Shirt Inventory & Zone Quotas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="glass-card rounded-3xl p-6 border border-slate-800 space-y-4">
           <div className="flex items-center justify-between">
@@ -326,27 +401,42 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
+        {/* Configured Seat Quotas & Occupancy */}
         <div className="glass-card rounded-3xl p-6 border border-slate-800 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Ticket className="w-5 h-5 text-indigo-400" /> Zone Capacity & Occupancy
+              <Sliders className="w-5 h-5 text-indigo-400" /> Configured Seat Quotas & Occupancy
             </h2>
-            <span className="text-xs text-slate-400">Sales Progress</span>
+            <span className="text-xs text-slate-400">Click Edit to change seat quota</span>
           </div>
 
           <div className="space-y-3 pt-1">
             {(data?.zoneBreakdown || []).map((zone) => {
               const percent = zone.capacity > 0 ? Math.round((zone.sold / zone.capacity) * 100) : 0;
               return (
-                <div key={zone.id} className="space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                <div key={zone.id} className="space-y-1.5 bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800/80">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-bold text-white flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: zone.colorCode }} />
                       {zone.name} <span className="text-[10px] text-slate-400 font-normal">({zone.eventTitle})</span>
                     </span>
-                    <span className="text-slate-300 font-mono">
-                      <span className="font-bold text-white">{zone.sold}</span> / {zone.capacity} ({percent}%)
-                    </span>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-slate-300 font-mono">
+                        <span className="font-bold text-white">{zone.sold}</span> / <span className="text-indigo-300 font-bold">{zone.capacity} Quota</span> ({percent}%)
+                      </span>
+
+                      <button
+                        onClick={() => {
+                          setEditingZone(zone);
+                          setEditZoneQuota(zone.capacity);
+                          setEditZonePrice(zone.price);
+                        }}
+                        className="px-2 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-semibold text-[10px] flex items-center gap-1"
+                      >
+                        <Edit3 className="w-3 h-3" /> Edit Quota
+                      </button>
+                    </div>
                   </div>
 
                   <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden">
@@ -451,63 +541,215 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Add Event Modal */}
-      {isEventModalOpen && (
+      {/* Edit Quota Modal */}
+      {editingZone && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-card rounded-3xl p-6 sm:p-8 max-w-md w-full border border-indigo-500/30 bg-slate-900 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-indigo-400" /> Create New Event
-              </h3>
+          <div className="glass-card rounded-3xl p-6 sm:p-8 max-w-md w-full border border-indigo-500/40 bg-slate-900 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Sliders className="w-5 h-5 text-indigo-400" /> Edit Seat Zone Quota
+                </h3>
+                <p className="text-xs text-slate-400">{editingZone.name} ({editingZone.eventTitle})</p>
+              </div>
+              <button onClick={() => setEditingZone(null)} className="p-1 text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveZoneQuota} className="space-y-4">
+              <div>
+                <label className="text-xs text-slate-300 font-semibold block mb-1">
+                  Seat Quota (Total Capacity) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min={editingZone.sold}
+                  value={editZoneQuota}
+                  onChange={(e) => setEditZoneQuota(parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-base focus:border-indigo-500"
+                />
+                <span className="text-[10px] text-slate-400 block mt-1">
+                  Currently Sold: <span className="font-bold text-white">{editingZone.sold}</span> seats. Quota cannot be lower than sold tickets.
+                </span>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-300 font-semibold block mb-1">
+                  Ticket Price (RM) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={editZonePrice}
+                  onChange={(e) => setEditZonePrice(parseFloat(e.target.value) || 0)}
+                  className="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono text-base focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingZone(null)}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingZone}
+                  className="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md"
+                >
+                  {updatingZone ? 'Saving...' : 'Update Seat Quota'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Event Modal with Seat Quota Builder */}
+      {isEventModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="glass-card rounded-3xl p-6 sm:p-8 max-w-2xl w-full border border-indigo-500/30 bg-slate-900 shadow-2xl space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-indigo-400" /> Create Event & Configure Seat Quotas
+                </h3>
+                <p className="text-xs text-slate-400">Specify event details and set custom seat categories & quotas</p>
+              </div>
               <button onClick={() => setIsEventModalOpen(false)} className="p-1 text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateEvent} className="space-y-4">
-              <div>
-                <label className="text-xs text-slate-300 font-semibold block mb-1">Event Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Cyberpunk EDM Rave 2026"
-                  value={eventTitle}
-                  onChange={(e) => setEventTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs"
-                />
+            <form onSubmit={handleCreateEvent} className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-300 font-semibold block">Event Title *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Zizan & Awie Live in KL"
+                    value={eventTitle}
+                    onChange={(e) => setEventTitle(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-300 font-semibold block">Event Date & Time *</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={eventDate}
+                    onChange={(e) => setEventDate(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="text-xs text-slate-300 font-semibold block mb-1">Description</label>
-                <textarea
-                  placeholder="Event highlights, headliners, timing info..."
-                  value={eventDesc}
-                  onChange={(e) => setEventDesc(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs h-20"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-300 font-semibold block">Venue Location *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Bukit Jalil National Stadium"
+                    value={eventLocation}
+                    onChange={(e) => setEventLocation(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-300 font-semibold block">Description</label>
+                  <input
+                    type="text"
+                    placeholder="Event highlights info..."
+                    value={eventDesc}
+                    onChange={(e) => setEventDesc(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="text-xs text-slate-300 font-semibold block mb-1">Event Date & Time *</label>
-                <input
-                  type="datetime-local"
-                  required
-                  value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs"
-                />
-              </div>
+              {/* SEAT QUOTA CONFIGURATION SECTION */}
+              <div className="space-y-3 border-t border-slate-800 pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
+                      <Sliders className="w-4 h-4 text-purple-400" /> Seat Categories & Quota Allocation
+                    </h4>
+                    <p className="text-[11px] text-slate-400">Define seat names, pricing, and exact quota capacity</p>
+                  </div>
 
-              <div>
-                <label className="text-xs text-slate-300 font-semibold block mb-1">Venue Location *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Sepang International Circuit"
-                  value={eventLocation}
-                  onChange={(e) => setEventLocation(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs"
-                />
+                  <button
+                    type="button"
+                    onClick={addCustomZoneRow}
+                    className="px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold text-xs flex items-center gap-1 hover:bg-purple-500/30"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Seat Zone
+                  </button>
+                </div>
+
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {customZones.map((zone, idx) => (
+                    <div key={idx} className="bg-slate-950 p-3 rounded-xl border border-slate-800 grid grid-cols-12 gap-2 items-center">
+                      <div className="col-span-4">
+                        <label className="text-[10px] text-slate-400 block mb-0.5">Zone Name</label>
+                        <input
+                          type="text"
+                          required
+                          value={zone.name}
+                          onChange={(e) => handleZoneInputChange(idx, 'name', e.target.value)}
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white text-xs font-bold"
+                        />
+                      </div>
+
+                      <div className="col-span-3">
+                        <label className="text-[10px] text-indigo-400 font-bold block mb-0.5">Seat Quota</label>
+                        <input
+                          type="number"
+                          required
+                          min={1}
+                          placeholder="Quota"
+                          value={zone.capacity}
+                          onChange={(e) => handleZoneInputChange(idx, 'capacity', parseInt(e.target.value) || 0)}
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-indigo-500/50 text-white font-mono text-xs font-bold"
+                        />
+                      </div>
+
+                      <div className="col-span-3">
+                        <label className="text-[10px] text-slate-400 block mb-0.5">Price (RM)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={zone.price}
+                          onChange={(e) => handleZoneInputChange(idx, 'price', parseFloat(e.target.value) || 0)}
+                          className="w-full px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-white font-mono text-xs"
+                        />
+                      </div>
+
+                      <div className="col-span-2 text-right">
+                        {customZones.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeCustomZoneRow(idx)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10"
+                            title="Remove Zone"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="pt-2 flex gap-2">
@@ -523,7 +765,7 @@ export default function AdminDashboardPage() {
                   disabled={creatingEvent}
                   className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold shadow-md"
                 >
-                  {creatingEvent ? 'Creating...' : 'Create Event'}
+                  {creatingEvent ? 'Creating Event...' : 'Create Event & Set Quotas'}
                 </button>
               </div>
             </form>
