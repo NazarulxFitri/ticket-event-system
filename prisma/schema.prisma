@@ -1,0 +1,46 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Zone {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String
+  price       Float    @default(0.0)
+  capacity    Int
+  colorCode   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tickets     Ticket[]
+}
+
+model Ticket {
+  id           String      @id @default(uuid())
+  ticketNumber String      @unique
+  fullName     String
+  phone        String
+  icPassport   String
+  tshirtSize   String
+  zoneId       String
+  zone         Zone        @relation(fields: [zoneId], references: [id])
+  isVvip       Boolean     @default(false)
+  status       String      @default("CONFIRMED")
+  qrHash       String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  redemption   Redemption?
+}
+
+model Redemption {
+  id         String   @id @default(uuid())
+  ticketId   String   @unique
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  redeemedAt DateTime @default(now())
+  redeemedBy String   @default("Staff Gateway 1")
+  notes      String?
+}
