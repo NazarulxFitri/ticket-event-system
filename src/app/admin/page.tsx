@@ -19,12 +19,16 @@ import {
   Edit3,
   Sliders,
   Trash2,
+  MapPin,
+  ChevronRight,
 } from 'lucide-react';
 
 interface EventOption {
   id: string;
   title: string;
   slug: string;
+  date?: string;
+  location?: string;
 }
 
 interface AnalyticsData {
@@ -37,6 +41,7 @@ interface AnalyticsData {
   zoneBreakdown: Array<{
     id: string;
     name: string;
+    eventId?: string;
     eventTitle?: string;
     capacity: number;
     sold: number;
@@ -127,6 +132,14 @@ export default function AdminDashboardPage() {
       console.error('Failed to load admin analytics:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleQuotaEventChange = (evtId: string) => {
+    if (evtId === 'ALL') {
+      setSelectedEventId('');
+    } else {
+      setSelectedEventId(evtId);
     }
   };
 
@@ -402,53 +415,284 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Configured Seat Quotas & Occupancy */}
-        <div className="glass-card rounded-3xl p-6 border border-slate-800 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Sliders className="w-5 h-5 text-indigo-400" /> Configured Seat Quotas & Occupancy
-            </h2>
-            <span className="text-xs text-slate-400">Click Edit to change seat quota</span>
+        <div className="glass-card rounded-3xl p-6 border border-slate-800 space-y-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-indigo-400" /> Configured Seat Quotas & Occupancy
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Event-level seat allocations, pricing & real-time capacity tracker
+              </p>
+            </div>
+
+            {/* Event Scope Switcher for Seat Quotas */}
+            <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-xl text-xs">
+              <Filter className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-slate-400 font-semibold hidden sm:inline">Event:</span>
+              <select
+                value={selectedEventId || 'ALL'}
+                onChange={(e) => handleQuotaEventChange(e.target.value)}
+                className="bg-transparent text-white font-bold focus:outline-none cursor-pointer"
+              >
+                <option value="ALL">All Events (Grouped)</option>
+                {eventsList.map((evt) => (
+                  <option key={evt.id} value={evt.id}>
+                    {evt.title}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="space-y-3 pt-1">
-            {(data?.zoneBreakdown || []).map((zone) => {
-              const percent = zone.capacity > 0 ? Math.round((zone.sold / zone.capacity) * 100) : 0;
-              return (
-                <div key={zone.id} className="space-y-1.5 bg-slate-900/60 p-3.5 rounded-2xl border border-slate-800/80">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-white flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: zone.colorCode }} />
-                      {zone.name} <span className="text-[10px] text-slate-400 font-normal">({zone.eventTitle})</span>
-                    </span>
+          {/* Active Single Event Detailed View */}
+          {selectedEventId && (
+            <div className="space-y-4">
+              {(() => {
+                const currentEvt = eventsList.find((e) => e.id === selectedEventId);
+                const eventZones = (data?.zoneBreakdown || []).filter(
+                  (z) => !z.eventId || z.eventId === selectedEventId
+                );
+                const totalCap = eventZones.reduce((sum, z) => sum + z.capacity, 0);
+                const totalSold = eventZones.reduce((sum, z) => sum + z.sold, 0);
+                const totalRem = Math.max(0, totalCap - totalSold);
+                const totalRev = eventZones.reduce((sum, z) => sum + z.revenue, 0);
+                const totalPercent = totalCap > 0 ? Math.round((totalSold / totalCap) * 100) : 0;
 
-                    <div className="flex items-center gap-3">
-                      <span className="text-slate-300 font-mono">
-                        <span className="font-bold text-white">{zone.sold}</span> / <span className="text-indigo-300 font-bold">{zone.capacity} Quota</span> ({percent}%)
-                      </span>
+                return (
+                  <>
+                    {/* Event Info Banner */}
+                    <div className="bg-gradient-to-r from-indigo-950/70 via-purple-950/40 to-slate-900 p-4 rounded-2xl border border-indigo-500/30 space-y-3 shadow-lg">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                              Selected Event Details
+                            </span>
+                            <h3 className="text-base font-bold text-white">
+                              {currentEvt?.title || 'Selected Event'}
+                            </h3>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-400 mt-1">
+                            {currentEvt?.date && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                                {new Date(currentEvt.date).toLocaleDateString('en-US', {
+                                  weekday: 'short',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })}
+                              </span>
+                            )}
+                            {currentEvt?.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3.5 h-3.5 text-purple-400" />
+                                {currentEvt.location}
+                              </span>
+                            )}
+                          </div>
+                        </div>
 
-                      <button
-                        onClick={() => {
-                          setEditingZone(zone);
-                          setEditZoneQuota(zone.capacity);
-                          setEditZonePrice(zone.price);
-                        }}
-                        className="px-2 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-semibold text-[10px] flex items-center gap-1"
-                      >
-                        <Edit3 className="w-3 h-3" /> Edit Quota
-                      </button>
+                        <div className="text-left sm:text-right">
+                          <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">
+                            Quota Revenue
+                          </span>
+                          <span className="text-lg font-black text-emerald-400">
+                            RM {totalRev.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Event Overview Metrics */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-1">
+                        <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-center">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold">Total Quota</span>
+                          <span className="text-sm font-black text-white">{totalCap} Seats</span>
+                        </div>
+                        <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-center">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold">Seats Sold</span>
+                          <span className="text-sm font-black text-indigo-400">{totalSold}</span>
+                        </div>
+                        <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-center">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold">Available</span>
+                          <span className="text-sm font-black text-emerald-400">{totalRem}</span>
+                        </div>
+                        <div className="bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-center">
+                          <span className="text-slate-400 block text-[10px] uppercase font-bold">Occupancy</span>
+                          <span className="text-sm font-black text-amber-400">{totalPercent}%</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ width: `${percent}%`, backgroundColor: zone.colorCode }}
-                    />
-                  </div>
+                    {/* Seat Categories Breakdown for this event */}
+                    <div className="space-y-3 pt-1">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Seat Categories & Allocation ({eventZones.length})
+                      </h4>
+                      {eventZones.length === 0 ? (
+                        <div className="p-6 text-center text-slate-500 text-xs bg-slate-900/40 rounded-2xl border border-slate-800">
+                          No seat zones created for this event yet.
+                        </div>
+                      ) : (
+                        eventZones.map((zone) => {
+                          const percent = zone.capacity > 0 ? Math.round((zone.sold / zone.capacity) * 100) : 0;
+                          return (
+                            <div key={zone.id} className="space-y-2 bg-slate-900/70 p-4 rounded-2xl border border-slate-800/80">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: zone.colorCode }} />
+                                    <span className="font-bold text-white text-sm">{zone.name}</span>
+                                    <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px]">
+                                      RM {zone.price.toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between sm:justify-end gap-3">
+                                  <span className="text-slate-300 font-mono">
+                                    <span className="font-bold text-white">{zone.sold}</span> /{' '}
+                                    <span className="text-indigo-300 font-bold">{zone.capacity} Quota</span> ({percent}%)
+                                  </span>
+
+                                  <button
+                                    onClick={() => {
+                                      setEditingZone(zone);
+                                      setEditZoneQuota(zone.capacity);
+                                      setEditZonePrice(zone.price);
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-semibold text-[10px] flex items-center gap-1 transition-all"
+                                  >
+                                    <Edit3 className="w-3 h-3" /> Edit Quota
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Progress bar */}
+                              <div className="w-full h-2.5 bg-slate-950 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${percent}%`, backgroundColor: zone.colorCode }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* All Events Grouped View */}
+          {!selectedEventId && (
+            <div className="space-y-4 pt-1">
+              {eventsList.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 text-xs bg-slate-900/40 rounded-2xl border border-slate-800">
+                  No events found. Click "Add Event with Quotas" above to create your first event.
                 </div>
-              );
-            })}
-          </div>
+              ) : (
+                eventsList.map((evt) => {
+                  const evtZones = (data?.zoneBreakdown || []).filter(
+                    (z) => z.eventId === evt.id || z.eventTitle === evt.title
+                  );
+                  const totalCap = evtZones.reduce((sum, z) => sum + z.capacity, 0);
+                  const totalSold = evtZones.reduce((sum, z) => sum + z.sold, 0);
+                  const percent = totalCap > 0 ? Math.round((totalSold / totalCap) * 100) : 0;
+
+                  return (
+                    <div key={evt.id} className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-2.5">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-white text-sm">{evt.title}</h3>
+                            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-slate-800 text-indigo-300 font-mono font-bold">
+                              {totalSold} / {totalCap} Seats ({percent}%)
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-1">
+                            {evt.date && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3 text-indigo-400" />
+                                {new Date(evt.date).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })}
+                              </span>
+                            )}
+                            {evt.location && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3 text-purple-400" />
+                                {evt.location}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleQuotaEventChange(evt.id)}
+                          className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold text-xs flex items-center gap-1 transition-all"
+                        >
+                          Select Event Details <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Seat Zone List for this Event */}
+                      <div className="space-y-2 pt-1">
+                        {evtZones.length === 0 ? (
+                          <p className="text-[11px] text-slate-500 italic">No seat zones configured.</p>
+                        ) : (
+                          evtZones.map((zone) => {
+                            const zonePercent = zone.capacity > 0 ? Math.round((zone.sold / zone.capacity) * 100) : 0;
+                            return (
+                              <div key={zone.id} className="space-y-1 bg-slate-950/60 p-3 rounded-xl border border-slate-800/60">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="font-bold text-white flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: zone.colorCode }} />
+                                    {zone.name}
+                                    <span className="text-[10px] text-slate-400 font-mono">RM {zone.price.toFixed(2)}</span>
+                                  </span>
+
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-slate-300 font-mono text-[11px]">
+                                      <span className="font-bold text-white">{zone.sold}</span> /{' '}
+                                      <span className="text-indigo-300 font-bold">{zone.capacity} Quota</span> ({zonePercent}%)
+                                    </span>
+
+                                    <button
+                                      onClick={() => {
+                                        setEditingZone(zone);
+                                        setEditZoneQuota(zone.capacity);
+                                        setEditZonePrice(zone.price);
+                                      }}
+                                      className="px-2 py-0.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/30 font-semibold text-[10px] flex items-center gap-1"
+                                    >
+                                      <Edit3 className="w-3 h-3" /> Edit Quota
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${zonePercent}%`, backgroundColor: zone.colorCode }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
       </div>
 

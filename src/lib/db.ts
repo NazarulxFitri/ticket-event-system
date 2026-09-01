@@ -799,7 +799,13 @@ export async function getAnalytics(eventId?: string | null) {
   // 1. Events list
   const eSnap = await getDocs(query(eventsCol));
   const events = eSnap.docs
-    .map((d) => ({ id: d.id, title: d.data().title, slug: d.data().slug, date: d.data().date }))
+    .map((d) => ({
+      id: d.id,
+      title: d.data().title,
+      slug: d.data().slug,
+      date: d.data().date,
+      location: d.data().location || '',
+    }))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   // 2. Filter tickets
@@ -850,6 +856,7 @@ export async function getAnalytics(eventId?: string | null) {
     return {
       id: z.id,
       name: z.name,
+      eventId: z.eventId,
       eventTitle: eventsMap.get(z.eventId) || 'Event',
       capacity: z.capacity,
       sold,
@@ -892,7 +899,13 @@ export async function getAnalytics(eventId?: string | null) {
   const redemptionRate = totalTickets > 0 ? Math.round((totalRedeemed / totalTickets) * 100) : 0;
 
   return {
-    events: events.map((e) => ({ id: e.id, title: e.title, slug: e.slug })),
+    events: events.map((e) => ({
+      id: e.id,
+      title: e.title,
+      slug: e.slug,
+      date: e.date,
+      location: e.location,
+    })),
     selectedEventId: eventId || null,
     analytics: {
       totalTickets,
